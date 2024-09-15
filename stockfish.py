@@ -5,7 +5,7 @@ import re
 import subprocess
 import sys
 
-DEFAULT_ENGINE="stockfish17"
+DEFAULT_ENGINE="stockfish"
 ONE_SECOND = 1
 
 def initialize_engine(engine_name=DEFAULT_ENGINE, options={}):

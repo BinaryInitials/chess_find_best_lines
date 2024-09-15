@@ -29,7 +29,7 @@ COLOR_WHITE='\033[37m'
 BOUNDARY = "   " + "-"*33
 LAST_ROW = "  A   B   C   D   E   F   G   H  "
 
-DEFAULT_STOCKFISH_TIMEOUT = stockfish17.ONE_SECOND
+DEFAULT_STOCKFISH_TIMEOUT = stockfish.ONE_SECOND
 
 def print_board(board):
 	print(BOUNDARY)
@@ -90,7 +90,7 @@ def run_game_lines(engine, human_engine, board, move_history, pgns, last_lichess
 		pgn = get_pgn(move_history)
 		pgn_move_number = int((len(pgn.split(' ')))/2)+1
 		dots = "." if board.turn else ".. "
-		move = stockfish17.analyze_board(engine, board, stockfish_timeout)
+		move = stockfish.analyze_board(engine, board, stockfish_timeout)
 		board.push_san(move['san']);
 		fen_cache.append(board.fen().split(' ')[0])
 
@@ -175,7 +175,7 @@ def run_game_lines(engine, human_engine, board, move_history, pgns, last_lichess
 			move_history.pop()
 	else:
 		if "mate" in move_history[-1]:
-			move = stockfish17.analyze_board(engine, board, stockfish_timeout)
+			move = stockfish.analyze_board(engine, board, stockfish_timeout)
 			board.push_san(move['san']);
 			move_history.append(move['san'])
 
@@ -279,12 +279,12 @@ if __name__ == "__main__":
 				fen_cache.append(check_board.fen().split(" ")[0])
 
 	tic = timer()
-	engine = stockfish17.initialize_engine(options={"Threads": 16})
-	engine_human = stockfish17.initialize_engine(options={"UCI_LimitStrength": True, "UCI_Elo": 2500})
+	engine = stockfish.initialize_engine(options={"Threads": 16})
+	engine_human = stockfish.initialize_engine(options={"UCI_LimitStrength": True, "UCI_Elo": 2500})
 
 	run_game_lines(engine=engine, human_engine=engine_human, board=board, move_history=initial_move_history, pgns=pgns, last_lichess_total=1_000_000_000_000, stockfish_turn=turn, debug_mode=debug_mode, threshold=threshold, skip_lichess=skip_lichess, stockfish_timeout=stockfish_timeout, fen_cache=fen_cache)
-	stockfish17.close_engine(engine)
-	stockfish17.close_engine(engine_human)
+	stockfish.close_engine(engine)
+	stockfish.close_engine(engine_human)
 	delta_time = dt(tic)
 	print(f"dt={delta_time}, average time/game={delta_time/len(pgns)}")
 	print()
