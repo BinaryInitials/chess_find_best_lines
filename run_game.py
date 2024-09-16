@@ -27,7 +27,7 @@ COLOR_LIGHT_CYAN='\033[36m'
 COLOR_LIGHT_GRAY='\033[37m'
 COLOR_WHITE='\033[37m'
 BOUNDARY = "   " + "-"*33
-LAST_ROW = "  A   B   C   D   E   F   G   H  "
+LAST_ROW = "      A   B   C   D   E   F   G   H  "
 
 DEFAULT_STOCKFISH_TIMEOUT = stockfish.ONE_SECOND
 
@@ -82,6 +82,41 @@ def get_pgn(move_history):
 		else:
 			pgn += f"{move} "
 	return pgn
+
+def get_int_score(score):
+	int_score = 0
+	if "#" in score:
+		mate_depth = int(re.sub("#", "", score))
+		if mate_depth > 0:
+			int_score = 10000 - mate_depth
+		else:
+			int_score = -10000 - mate_depth
+	else:
+		int_score = int(score)
+	return int_score
+
+NUMBER_OF_MOVES_TO_CONSIDER = 3
+def analyze_weak_engine(board, engine):
+	info = engine.analyse(board, multipv=NUMBER_OF_MOVES_TO_CONSIDER, limit=chess.engine.Limit(depth=100, time=1))
+	first_move = info[0]
+	first_move_san = board.san(first_move['pv'][0])
+	first_move_score = first_move['score'].relative.__str__()
+	move_object = {"move": first_move_san, "score": first_move_score, "int_score": get_int_score(first_move_score)}
+	if re.match('.*[+#=x]', first_move_san) != None or first_move['score'].is_mate():
+		return move_object
+
+	for i in range(len(info)):
+		# Evaluate worse move to best
+		move_object_being_considered = info[-i-1]
+		move_object_being_considered_san = board.san(move_object_being_considered['pv'][0])
+		move_object_being_considered_score = move_object_being_considered['score'].relative.__str__()
+		
+		if "#" in move_object_being_considered_score:
+			continue
+		return {"move": move_object_being_considered_san, "score": move_object_being_considered_score, "int_score": get_int_score(move_object_being_considered_score)}
+
+	return move_object
+
 
 def run_game_lines(engine, human_engine, board, move_history, pgns, last_lichess_total, stockfish_turn, threshold=0.25, debug_mode=False, skip_lichess=False, stockfish_timeout=DEFAULT_STOCKFISH_TIMEOUT, fen_cache=[]):
 	fen = board.fen()
@@ -174,22 +209,17 @@ def run_game_lines(engine, human_engine, board, move_history, pgns, last_lichess
 			board.pop()
 			move_history.pop()
 	else:
-		if "mate" in move_history[-1]:
-			move = stockfish.analyze_board(engine, board, stockfish_timeout)
-			board.push_san(move['san']);
-			move_history.append(move['san'])
 
-		else:
-			result = human_engine.play(board, chess.engine.Limit(depth=100, time=1))
-			move = board.san(result.move)
-			move_history.append(move)
-			board.push_san(move)
+		move_object = analyze_weak_engine(board, human_engine)
+		move = move_object['move']
+		score = move_object['score']
+		board.push_san(move);
+		move_history.append(move)
 
 		if debug_mode:
 			print_board(board)
 			print(fen)
 			print(get_pgn(move_history))
-			# print(f"[GAME #{len(pgns)+1}][AICHESSJS]{pgn_move_number}{dots}{json_output['san']}, fen={board.fen()}")
 			print(f"[GAME #{len(pgns)+1}][FAKEHUMAN]{pgn_move_number}{dots}{move}, fen={board.fen()}")
 
 		run_game_lines(engine, human_engine, board, move_history, pgns, last_lichess_total, stockfish_turn, threshold, debug_mode=debug_mode, skip_lichess=skip_lichess, stockfish_timeout=stockfish_timeout, fen_cache=fen_cache)
@@ -280,7 +310,7 @@ if __name__ == "__main__":
 
 	tic = timer()
 	engine = stockfish.initialize_engine(options={"Threads": 16})
-	engine_human = stockfish.initialize_engine(options={"UCI_LimitStrength": True, "UCI_Elo": 2500})
+	engine_human = stockfish.initialize_engine()
 
 	run_game_lines(engine=engine, human_engine=engine_human, board=board, move_history=initial_move_history, pgns=pgns, last_lichess_total=1_000_000_000_000, stockfish_turn=turn, debug_mode=debug_mode, threshold=threshold, skip_lichess=skip_lichess, stockfish_timeout=stockfish_timeout, fen_cache=fen_cache)
 	stockfish.close_engine(engine)

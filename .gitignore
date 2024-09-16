@@ -1,3 +1,5 @@
+!requirements.txt
 stockfish
 .venv/
 __pycache__
+*.txt

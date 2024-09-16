@@ -1,4 +1,2 @@
-!requirements.txt
 requests
 chess
-*.txt
