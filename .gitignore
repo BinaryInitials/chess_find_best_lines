@@ -3,3 +3,4 @@ stockfish
 .venv/
 __pycache__
 *.txt
+.DS_Store
