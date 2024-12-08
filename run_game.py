@@ -73,12 +73,12 @@ def get_score(board):
 def get_pgn(move_history):
 	pgn = ""
 	move_ply = 0
-	move_number = 0
+	local_move_number = 0
 	for move in move_history:
 		move_ply += 1
 		if move_ply % 2 == 1:
-			move_number+=1
-			pgn += f"{move_number}.{move} "
+			local_move_number+=1
+			pgn += f"{local_move_number}.{move} "
 		else:
 			pgn += f"{move} "
 	return pgn
@@ -98,19 +98,19 @@ def get_int_score(score):
 NUMBER_OF_MOVES_TO_CONSIDER = 3
 def analyze_weak_engine(board, engine_weak, engine_strong):
 	move = stockfish.find_move(engine_weak, board)
-	move_san = board.san(move)
-	board.push(move)
+	move_san = board.san(move.move)
+	board.push(move.move)
 	board_analysis = stockfish.analyze_board(engine_strong, board)
 	board.pop()
 	move_object = {}
-	if board_analyze["is_mate"]:
+	if board_analysis["is_mate"]:
 		# TODO: Do stuff
-		move_object = stockfish.analyze(board(engine_string, board))
+		move_object = stockfish.analyze_board(engine_strong, board)
 	else:
 		move_object = {"san": move_san, "score": board_analysis["score"], "score_int": -board_analysis["score_int"]}
 	return move_object
 	
-def run_game_lines(engine, human_engine, board, move_history, pgns, last_lichess_total, stockfish_turn, threshold=0.25, debug_mode=False, skip_lichess=False, stockfish_timeout=DEFAULT_STOCKFISH_TIMEOUT, fen_cache=[]):
+def run_game_lines(engine, human_engine, board, move_history, pgns, last_lichess_total, stockfish_turn, threshold=0.25, total_game_percentage_threshold=0.9, debug_mode=False, skip_lichess=False, stockfish_timeout=DEFAULT_STOCKFISH_TIMEOUT, fen_cache=[]):
 	fen = board.fen()
 
 	if board.turn == (stockfish_turn == "w"):
@@ -167,24 +167,37 @@ def run_game_lines(engine, human_engine, board, move_history, pgns, last_lichess
 		move_number = 0
 
 		previous_percentage_played = None
+		game_percentage_covered = 0
 		for lichess_move in lichess_moves:
-
+			move_number +=1
 			if lichess_move["percentage_played"] < threshold and previous_percentage_played != None and previous_percentage_played - lichess_move["percentage_played"] > 0.005:
 				if debug_mode:
-					print(f"[GAME #{len(pgns)+1}][LICHESS {move_number+1}]{pgn_move_number}{dots}{lichess_move['move_san']} skipping because: play%={round(100*lichess_move['percentage_played'],1)}%, previous_play%={round(100*previous_percentage_played,1)}%")
-					print(f"[GAME #{len(pgns)+1}][LICHESS {move_number+1}]{pgn_move_number}{dots}{lichess_move['move_san']} pgn: {get_pgn(move_history)}")
+					print(f"[GAME #{len(pgns)+1}][LICHESS {move_number}]{pgn_move_number}{dots}{lichess_move['move_san']} skipping because: play%={round(100*lichess_move['percentage_played'],1)}%, previous_play%={round(100*previous_percentage_played,1)}%")
+					print(f"[GAME #{len(pgns)+1}][LICHESS {move_number}]{pgn_move_number}{dots}{lichess_move['move_san']} pgn: {get_pgn(move_history)}")
 				break
-			previous_percentage_played_previous = previous_percentage_played
+
+			if previous_percentage_played != None:
+				previous_percentage_played_previous = previous_percentage_played
+			else:
+				previous_percentage_played_previous = 0
 			previous_percentage_played = lichess_move["percentage_played"]
 
-			move_number +=1
+			if game_percentage_covered > total_game_percentage_threshold:
+				if debug_mode:
+					print(f"[GAME #{len(pgns)+1}][LICHESS {move_number}]{pgn_move_number}{dots}{lichess_move['move_san']} skipping because: total play%={round(100*game_percentage_covered,1)}%")
+					print(f"[GAME #{len(pgns)+1}][LICHESS {move_number}]{pgn_move_number}{dots}{lichess_move['move_san']} pgn: {get_pgn(move_history)}")
+				break
+
+			game_percentage_covered += lichess_move["percentage_played"]
+
+			
 			board.push_san(lichess_move['move_san'])
 
 			# Checking to see if this move leads to a transpose of a previously analyzed board
 			fen_key = board.fen().split(" ")[0]
 			if fen_key in fen_cache:
 				if debug_mode:
-					print(f"[GAME #{len(pgns)+1}][LICHESS {move_number+1}]{pgn_move_number}{dots}{lichess_move['move_san']} skipping transpose: {fen_key}")
+					print(f"[GAME #{len(pgns)+1}][LICHESS {move_number}]{pgn_move_number}{dots}{lichess_move['move_san']} skipping transpose: {fen_key}")
 				board.pop()
 				continue
 
@@ -195,25 +208,25 @@ def run_game_lines(engine, human_engine, board, move_history, pgns, last_lichess
 				print_board(board)
 				print(fen)
 				print(get_pgn(move_history))
-				print(f"[GAME #{len(pgns)+1}][LICHESS {move_number+1}]{pgn_move_number}{dots}{lichess_move['move_san']}, fen={board.fen()}, play%={round(100*lichess_move['percentage_played'],1)}%, previous_play%={round(100*previous_percentage_played_previous,1)}%")
+				print(f"[GAME #{len(pgns)+1}][LICHESS {move_number}]{pgn_move_number}{dots}{lichess_move['move_san']}, fen={board.fen()}, play={round(100*lichess_move['percentage_played'],1)}%, previous_play={round(100*previous_percentage_played_previous,1)}%, total_covered={(game_percentage_covered*100):0.2f}%")
 
-			run_game_lines(engine, human_engine, board, move_history, pgns, last_lichess_total, stockfish_turn, threshold, debug_mode=debug_mode, skip_lichess=skip_lichess, stockfish_timeout=stockfish_timeout, fen_cache=fen_cache)
+			run_game_lines(engine, human_engine, board, move_history, pgns, last_lichess_total, stockfish_turn, threshold, total_game_percentage_threshold, debug_mode=debug_mode, skip_lichess=skip_lichess, stockfish_timeout=stockfish_timeout, fen_cache=fen_cache)
 			board.pop()
 			move_history.pop()
 	else:
 
 		move_object = analyze_weak_engine(board, human_engine, engine)
-		move = move_object['move']
-		board.push_san(move);
-		move_history.append(move)
+		move_san = move_object['san']
+		board.push_san(move_san);
+		move_history.append(move_san)
 
 		if debug_mode:
 			print_board(board)
 			print(fen)
 			print(get_pgn(move_history))
-			print(f"[GAME #{len(pgns)+1}][FAKEHUMAN]{pgn_move_number}{dots}{move}, fen={board.fen()}")
+			print(f"[GAME #{len(pgns)+1}][FAKEHUMAN]{pgn_move_number}{dots}{move_san}, fen={board.fen()}")
 
-		run_game_lines(engine, human_engine, board, move_history, pgns, last_lichess_total, stockfish_turn, threshold, debug_mode=debug_mode, skip_lichess=skip_lichess, stockfish_timeout=stockfish_timeout, fen_cache=fen_cache)
+		run_game_lines(engine, human_engine, board, move_history, pgns, last_lichess_total, stockfish_turn, threshold, total_game_percentage_threshold, debug_mode=debug_mode, skip_lichess=skip_lichess, stockfish_timeout=stockfish_timeout, fen_cache=fen_cache)
 		board.pop()
 		move_history.pop()
 
@@ -242,7 +255,8 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(prog="run_game", description="Simulations of chess games between Stockfish and common human openings", epilog="Written by binary.initials, 01")
 	parser.add_argument('-t', '--turn', help="[REQUIRED] Turn")
 	parser.add_argument('-m', '--move-history', help="[REQUIRED] Move history, e.g. 'e4 e5 Nf3 Nc6'")
-	parser.add_argument('-p', '--threshold', default=0.5, type=float, help="[OPTIONAL] Evaluate moves with a play rate greater than this threshold (0.0=evaluates everything, 1.0=evaluates the most popular move)")
+	parser.add_argument('-p', '--threshold', default=0.5, type=float, help="[OPTIONAL] Evaluate moves with a play rate greater than this threshold (0.0=evaluates everything, 1.0=evaluates the most popular move), Example: 20% will skip any opening that is played less than 20 percent of the time")
+	parser.add_argument('--total-threshold', default=0.9, type=float, help="[OPTIONAL] Stop evaluating when total opening coverage exceeds this amount (0.0=skips everything, 1.0=evaluates everything) Example: 0.95 will evaluate 95 percent of the most popular openings")
 	parser.add_argument('-d', '--debug-mode', default=False, type=bool, help="[OPTIONAL] Debug mode")
 	parser.add_argument('-s', '--skip-lichess', default=False, type=bool, help="[OPTIONAL] Skip lichess")
 	parser.add_argument('-f', '--filename', help="[REQUIRED] Output filename")
@@ -258,7 +272,11 @@ if __name__ == "__main__":
 	filename = args.filename
 
 	stockfish_timeout = args.stockfish_timeout
-	
+	total_game_percentage_threshold = args.total_threshold
+	if total_game_percentage_threshold > 1 or total_game_percentage_threshold < 0:
+		print("[ERROR] Total threshold argument must be a decimal between [0-1]")
+		exit()
+
 	if threshold > 1 or threshold < 0:
 		print("[ERROR] Max play threshold rate argument must be a decimal between [0-1]")
 		exit()
@@ -303,7 +321,7 @@ if __name__ == "__main__":
 	engine = stockfish.initialize_engine(options={"Threads": 16})
 	engine_human = stockfish.initialize_engine_with_elo(1800)
 
-	run_game_lines(engine=engine, human_engine=engine_human, board=board, move_history=initial_move_history, pgns=pgns, last_lichess_total=1_000_000_000_000, stockfish_turn=turn, debug_mode=debug_mode, threshold=threshold, skip_lichess=skip_lichess, stockfish_timeout=stockfish_timeout, fen_cache=fen_cache)
+	run_game_lines(engine=engine, human_engine=engine_human, board=board, move_history=initial_move_history, pgns=pgns, last_lichess_total=1_000_000_000_000, stockfish_turn=turn, debug_mode=debug_mode, threshold=threshold, total_game_percentage_threshold=total_game_percentage_threshold, skip_lichess=skip_lichess, stockfish_timeout=stockfish_timeout, fen_cache=fen_cache)
 	stockfish.close_engine(engine)
 	stockfish.close_engine(engine_human)
 	delta_time = dt(tic)
