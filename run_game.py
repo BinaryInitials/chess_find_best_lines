@@ -96,28 +96,20 @@ def get_int_score(score):
 	return int_score
 
 NUMBER_OF_MOVES_TO_CONSIDER = 3
-def analyze_weak_engine(board, engine):
-	info = engine.analyse(board, multipv=NUMBER_OF_MOVES_TO_CONSIDER, limit=chess.engine.Limit(depth=100, time=1))
-	first_move = info[0]
-	first_move_san = board.san(first_move['pv'][0])
-	first_move_score = first_move['score'].relative.__str__()
-	move_object = {"move": first_move_san, "score": first_move_score, "int_score": get_int_score(first_move_score)}
-	if re.match('.*[+#=x]', first_move_san) != None or first_move['score'].is_mate():
-		return move_object
-
-	for i in range(len(info)):
-		# Evaluate worse move to best
-		move_object_being_considered = info[-i-1]
-		move_object_being_considered_san = board.san(move_object_being_considered['pv'][0])
-		move_object_being_considered_score = move_object_being_considered['score'].relative.__str__()
-		
-		if "#" in move_object_being_considered_score:
-			continue
-		return {"move": move_object_being_considered_san, "score": move_object_being_considered_score, "int_score": get_int_score(move_object_being_considered_score)}
-
+def analyze_weak_engine(board, engine_weak, engine_strong):
+	move = stockfish.find_move(engine_weak, board)
+	move_san = board.san(move)
+	board.push(move)
+	board_analysis = stockfish.analyze_board(engine_strong, board)
+	board.pop()
+	move_object = {}
+	if board_analyze["is_mate"]:
+		# TODO: Do stuff
+		move_object = stockfish.analyze(board(engine_string, board))
+	else:
+		move_object = {"san": move_san, "score": board_analysis["score"], "score_int": -board_analysis["score_int"]}
 	return move_object
-
-
+	
 def run_game_lines(engine, human_engine, board, move_history, pgns, last_lichess_total, stockfish_turn, threshold=0.25, debug_mode=False, skip_lichess=False, stockfish_timeout=DEFAULT_STOCKFISH_TIMEOUT, fen_cache=[]):
 	fen = board.fen()
 
@@ -210,9 +202,8 @@ def run_game_lines(engine, human_engine, board, move_history, pgns, last_lichess
 			move_history.pop()
 	else:
 
-		move_object = analyze_weak_engine(board, human_engine)
+		move_object = analyze_weak_engine(board, human_engine, engine)
 		move = move_object['move']
-		score = move_object['score']
 		board.push_san(move);
 		move_history.append(move)
 
@@ -310,7 +301,7 @@ if __name__ == "__main__":
 
 	tic = timer()
 	engine = stockfish.initialize_engine(options={"Threads": 16})
-	engine_human = stockfish.initialize_engine()
+	engine_human = stockfish.initialize_engine_with_elo(1800)
 
 	run_game_lines(engine=engine, human_engine=engine_human, board=board, move_history=initial_move_history, pgns=pgns, last_lichess_total=1_000_000_000_000, stockfish_turn=turn, debug_mode=debug_mode, threshold=threshold, skip_lichess=skip_lichess, stockfish_timeout=stockfish_timeout, fen_cache=fen_cache)
 	stockfish.close_engine(engine)

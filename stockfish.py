@@ -14,6 +14,12 @@ def initialize_engine(engine_name=DEFAULT_ENGINE, options={}):
 		engine.configure({key: options[key]})
 	return engine
 
+# Elo: 1320 to 3190
+def initialize_engine_with_elo(elo, engine_name=DEFAULT_ENGINE):
+	return initialize_engine(engine_name=DEFAULT_ENGINE, options={"UCI_LimitStrength": True, "UCI_Elo": elo})
+
+def find_move(engine, board, time=ONE_SECOND):
+	return engine.play(board, chess.engine.Limit(time=time))
 
 def close_engine(engine):
 	engine.quit()
