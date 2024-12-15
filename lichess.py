@@ -9,7 +9,7 @@ import urllib.parse
 
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
 SPEEDS="blitz,rapid,bullet,ultraBullet,classical,correspondence"
-RATINGS="400, 1000,1200,1400,1600,1800,2000,2200,2500"
+RATINGS="400,1000,1200,1400,1600,1800,2000,2200,2500"
 
 # RATINGS="1000,1200,1400,1600,1800,2000"
 STARTING_FEN="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
