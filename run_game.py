@@ -36,7 +36,7 @@ def print_board(board):
 	for i in range(7,-1,-1):
 		row = f" {i+1} |"
 		for j in range(0, 8):
-			piece_index = i*8+j	
+			piece_index = i*8+j
 			piece = " "
 			color = COLOR_NC
 			if board.piece_at(piece_index) != None:
@@ -47,7 +47,7 @@ def print_board(board):
 		print(row)
 		print(BOUNDARY)
 	print(LAST_ROW)
-	
+
 PIECE_MAP = {"P": 1, "N": 3, "B": 3, "R": 5, "Q": 9, "K": 200, "p": -1, "n": -3, "b": -3, "r": -5, "q": -9, "k": -200}
 LICHESS_TOTAL_COUNT_TRESHOLD = 10
 def timestamp(now):
@@ -109,7 +109,7 @@ def analyze_weak_engine(board, engine_weak, engine_strong):
 	else:
 		move_object = {"san": move_san, "score": board_analysis["score"], "score_int": -board_analysis["score_int"]}
 	return move_object
-	
+
 def run_game_lines(engine, human_engine, board, move_history, pgns, last_lichess_total, stockfish_turn, threshold=0.25, total_game_percentage_threshold=0.9, debug_mode=False, skip_lichess=False, stockfish_timeout=DEFAULT_STOCKFISH_TIMEOUT, fen_cache=[]):
 	fen = board.fen()
 
@@ -158,7 +158,7 @@ def run_game_lines(engine, human_engine, board, move_history, pgns, last_lichess
 		last_lichess_total = lichess_object["total"]
 		if len(lichess_moves) == 0:
 			last_lichess_total = 0
-	
+
 	pgn = get_pgn(move_history)
 	pgn_move_number = int((len(pgn.split(' ')))/2)+1
 	dots = "." if board.turn else ".. "
@@ -190,7 +190,6 @@ def run_game_lines(engine, human_engine, board, move_history, pgns, last_lichess
 
 			game_percentage_covered += lichess_move["percentage_played"]
 
-			
 			board.push_san(lichess_move['move_san'])
 
 			# Checking to see if this move leads to a transpose of a previously analyzed board
@@ -243,7 +242,7 @@ def read_file(filename):
 
 def load_initial_move_history(move_history_input):
 	move_history = []
-	if move_history_input != None:	
+	if move_history_input != None:
 		move_history  = re.split("[, ]+", re.sub("[0-9]+\\. *", "", move_history_input))
 
 	return move_history
@@ -262,7 +261,7 @@ if __name__ == "__main__":
 	parser.add_argument('-f', '--filename', help="[REQUIRED] Output filename")
 	parser.add_argument('--stockfish-timeout', default=DEFAULT_STOCKFISH_TIMEOUT, type=float, help="[OPTIONAL] Stockfish timeout")
 	parser.add_argument('--previous-cache-file', help="[OPTIONAL] Previous file to get cache from")
-	
+
 	args = parser.parse_args()
 	turn = args.turn
 	move_history_input = args.move_history
