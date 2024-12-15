@@ -95,7 +95,6 @@ def get_int_score(score):
 		int_score = int(score)
 	return int_score
 
-NUMBER_OF_MOVES_TO_CONSIDER = 3
 def analyze_weak_engine(board, engine_weak, engine_strong):
 	move = stockfish.find_move(engine_weak, board)
 	move_san = board.san(move.move)
@@ -104,7 +103,6 @@ def analyze_weak_engine(board, engine_weak, engine_strong):
 	board.pop()
 	move_object = {}
 	if board_analysis["is_mate"]:
-		# TODO: Do stuff
 		move_object = stockfish.analyze_board(engine_strong, board)
 	else:
 		move_object = {"san": move_san, "score": board_analysis["score"], "score_int": -board_analysis["score_int"]}
@@ -149,6 +147,26 @@ def run_game_lines(engine, human_engine, board, move_history, pgns, last_lichess
 				print()
 				print(f"[NEW GAME] GAME #{len(pgns)+1} STARTS NOW")
 
+			return
+
+		if move["is_mate"]:
+			losing_moves = board.generate_legal_moves()
+			for losing_move in losing_moves:
+				losing_move_san = board.san(losing_move)
+				board.push(losing_move)
+				move_history.append(losing_move_san)
+
+				if debug_mode:
+					print_board(board)
+					print(fen)
+					print(get_pgn(move_history))
+					print(f"[GAME #{len(pgns)+1}][ENDGAME]{pgn_move_number}{dots}{losing_move_san}, fen={board.fen()}")
+
+				run_game_lines(engine, human_engine, board, move_history, pgns, last_lichess_total, stockfish_turn, threshold, total_game_percentage_threshold, debug_mode=debug_mode, skip_lichess=skip_lichess, stockfish_timeout=stockfish_timeout, fen_cache=fen_cache)
+				board.pop()
+				move_history.pop()
+			board.pop()
+			move_history.pop()
 			return
 
 	lichess_moves = []
